@@ -1,0 +1,243 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "API Development - RESTful Practice API",
+    "version": "1.0.0",
+    "description": "Tài liệu API chuẩn OpenAPI 3.0 phục vụ chương trình đào tạo NodeJS Course (Sun Asterisk). Minh họa toàn diện RESTful principles, HTTP Request/Response, JWT Authentication, Swagger UI và Testing."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local Development Server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Nhập JWT Token của bạn theo định dạng: Bearer <token>"
+      },
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-api-key",
+        "description": "API Key xác thực: sun-secret-api-key-2026"
+      }
+    },
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "statusCode": { "type": "integer", "example": 200 },
+          "message": { "type": "string", "example": "Thao tác thành công" }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 1 },
+          "title": { "type": "string", "example": "MacBook Pro 16 inch M3 Max" },
+          "category": { "type": "string", "example": "laptops" },
+          "price": { "type": "number", "example": 3499 },
+          "stock": { "type": "integer", "example": 15 },
+          "rating": { "type": "number", "example": 4.9 },
+          "description": { "type": "string", "example": "Máy tính xách tay cao cấp..." },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "CreateProductDto": {
+        "type": "object",
+        "required": ["title", "category", "price"],
+        "properties": {
+          "title": { "type": "string", "example": "Bàn phím cơ Custom" },
+          "category": { "type": "string", "example": "accessories" },
+          "price": { "type": "number", "example": 150 },
+          "stock": { "type": "integer", "example": 30 },
+          "description": { "type": "string", "example": "Mô tả sản phẩm" }
+        }
+      },
+      "LoginDto": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "example": "admin@sun-asterisk.com" },
+          "password": { "type": "string", "example": "Admin@123" }
+        }
+      },
+      "RegisterDto": {
+        "type": "object",
+        "required": ["name", "email", "password"],
+        "properties": {
+          "name": { "type": "string", "example": "Minh Nhat" },
+          "email": { "type": "string", "example": "nhat@sun-asterisk.com" },
+          "password": { "type": "string", "example": "Secret@123" },
+          "role": { "type": "string", "enum": ["trainee", "admin"], "example": "trainee" }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/auth/register": {
+      "post": {
+        "summary": "Đăng ký tài khoản người dùng mới",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RegisterDto" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Tạo tài khoản thành công, trả về JWT Token" },
+          "400": { "description": "Dữ liệu gửi lên không hợp lệ" },
+          "409": { "description": "Email đã tồn tại" }
+        }
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "summary": "Đăng nhập xác thực và nhận JWT Token",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LoginDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Đăng nhập thành công, nhận token" },
+          "401": { "description": "Sai email hoặc mật khẩu" }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "summary": "Lấy thông tin tài khoản đang đăng nhập",
+        "tags": ["Authentication"],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Thông tin cá nhân người dùng" },
+          "401": { "description": "Chưa đăng nhập hoặc token không hợp lệ" }
+        }
+      }
+    },
+    "/api/v1/products": {
+      "get": {
+        "summary": "Lấy danh sách sản phẩm (hỗ trợ phân trang, lọc, sắp xếp)",
+        "tags": ["Products"],
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Tìm kiếm theo tiêu đề/mô tả" },
+          { "name": "category", "in": "query", "schema": { "type": "string" }, "description": "Lọc theo danh mục" },
+          { "name": "minPrice", "in": "query", "schema": { "type": "number" }, "description": "Giá tối thiểu" },
+          { "name": "maxPrice", "in": "query", "schema": { "type": "number" }, "description": "Giá tối đa" },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["price_asc", "price_desc", "rating_desc"] }, "description": "Sắp xếp" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Trang hiện tại" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 }, "description": "Số sản phẩm mỗi trang" }
+        ],
+        "responses": {
+          "200": { "description": "Danh sách sản phẩm kèm metadata phân trang" }
+        }
+      },
+      "post": {
+        "summary": "Tạo mới một sản phẩm",
+        "tags": ["Products"],
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateProductDto" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Tạo sản phẩm thành công, trả về sản phẩm vừa tạo" },
+          "400": { "description": "Dữ liệu thiếu trường bắt buộc" },
+          "401": { "description": "Chưa cung cấp token xác thực" },
+          "422": { "description": "Dữ liệu không đúng định dạng logic" }
+        }
+      }
+    },
+    "/api/v1/products/{id}": {
+      "get": {
+        "summary": "Lấy chi tiết một sản phẩm theo ID",
+        "tags": ["Products"],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "ID sản phẩm" }
+        ],
+        "responses": {
+          "200": { "description": "Chi tiết sản phẩm" },
+          "404": { "description": "Không tìm thấy sản phẩm" }
+        }
+      },
+      "put": {
+        "summary": "Thay thế toàn bộ thông tin sản phẩm (PUT)",
+        "tags": ["Products"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateProductDto" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Thay thế thành công" },
+          "404": { "description": "Không tìm thấy sản phẩm" }
+        }
+      },
+      "patch": {
+        "summary": "Cập nhật một phần thông tin sản phẩm (PATCH)",
+        "tags": ["Products"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "price": { "type": "number", "example": 2999 },
+                  "stock": { "type": "integer", "example": 10 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Cập nhật một phần thành công" },
+          "404": { "description": "Không tìm thấy sản phẩm" }
+        }
+      },
+      "delete": {
+        "summary": "Xóa sản phẩm (Yêu cầu quyền Admin)",
+        "tags": ["Products"],
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": {
+          "204": { "description": "Xóa thành công (Không trả về nội dung)" },
+          "401": { "description": "Chưa xác thực" },
+          "403": { "description": "Không đủ quyền (Cần quyền Admin)" },
+          "404": { "description": "Không tìm thấy sản phẩm" }
+        }
+      }
+    }
+  }
+}
